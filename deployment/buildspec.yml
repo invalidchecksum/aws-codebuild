@@ -10,8 +10,6 @@ phases:
       - dotnet install -g Amazon.Lambda.Tools
   build:
     commands:
+      - mkdir final
       - cd HelloWorld/src/HellowWorld
-      - dotnet build
-      - cd ..\..\test\HellowWorld
-      - dotnet test
-      - dotnet lambda deploy-serverless
+      - dotnet publish -o ../../../final
