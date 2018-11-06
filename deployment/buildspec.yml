@@ -1,0 +1,17 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - apt-get update
+      - dotnet tool update -g Amazon.Lambda.Tools
+      - apt-get install p7zip-full
+      - npm install npm@latest -g
+      - dotnet install -g Amazon.Lambda.Tools
+  build:
+    commands:
+      - cd HelloWorld/src/HellowWorld
+      - dotnet build
+      - cd ..\..\test\HellowWorld
+      - dotnet test
+      - dotnet lambda deploy-serverless

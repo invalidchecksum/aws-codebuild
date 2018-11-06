@@ -1,0 +1,20 @@
+{
+  "name": "setup-npm",
+  "version": "1.0.1",
+  "description": "NPM helper for internal @Mitel packages",
+  "main": "setup-npm.js",
+  "author": "james.renaud@mitel.com",
+  "config": {
+    "region": "us-east-1"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.32.0"
+  },
+  "devDependencies": {
+    "command-line-args": "^4.0.7",
+    "npm-cli-login": "0.0.10"
+  },
+  "scripts": {
+    "setup-npm": "node setup-npm.js"
+  }
+}

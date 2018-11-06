@@ -1,0 +1,48 @@
+{
+  "name": "platform-api-billing",
+  "version": "1.0.191",
+  "description": "Scripts to deploy Cloudlink Billing micro",
+  "main": "index.js",
+  "author": "james.renaud@mitel.com",
+  "license": "ISC",
+  "config": {
+    "region": "us-east-1",
+    "roleArn": "arn:aws:iam::<placeholder>:role/Developer",
+    "cloudType": "dev",
+    "cloud": "us",
+    "stackName": "platform-api-billing",
+    "serviceName": "billing",
+    "adminTokenArn": "arn:aws:lambda:us-east-1:062437324875:function:platform-api-admin-token",
+    "apigatewayLambdaPath": "./build/api-gateway-lambda.zip",
+    "swaggerPath": "../src/<placeholder>.json",
+    "version": "",
+    "euregion": "eu-central-1",
+    "euroleArn": "arn:aws:iam::<placeholder>:role/Developer",
+    "eucloud": "eu",
+    "euadminTokenArn": "arn:aws:lambda:eu-central-1:471315753734:function:platform-api-admin-token"
+  },
+  "dependencies": {
+    "@mitel-internal/cloudlink-deployment": "^2.0.30",
+    "cross-env": "^5.0.5",
+    "rimraf": "^2.6.2"
+  },
+  "scripts": {
+    "repackage": "npm run repackage-apigateway",
+    "repackage-apigateway": "cd ../api-gateway && npm run repackage",
+    "prerepackage": "rimraf build && mkdir build",
+    "deploy": "npm run deploy-stack && npm run deploy-code",
+    "deploy-stack": "cross-env-shell deploy-serverless --stack --region=$npm_package_config_region --stack-name=$npm_package_config_stackName --service-name=$npm_package_config_serviceName --auth-lambda-arn=$npm_package_config_adminTokenArn --role-arn=$npm_package_config_roleArn --cloud-type=$npm_package_config_cloudType --cloud=$npm_package_config_cloud --api-lambda-path=$npm_package_config_apigatewayLambdaPath --swagger-path=$npm_package_config_swaggerPath",
+    "postdeploy-stack": "cross-env-shell deploy-serverless --dnsupdate --region=$npm_package_config_region  --stack-name=$npm_package_config_stackName --service-name=$npm_package_config_serviceName --role-arn=$npm_package_config_roleArn --cloud-type=$npm_package_config_cloudType --cloud=$npm_package_config_cloud --api-lambda-path=$npm_package_config_apigatewayLambdaPath",
+    "predeploy-code": "npm version patch && npm run repackage",
+    "deploy-code": "cross-env-shell deploy-serverless --code --stack-name=$npm_package_config_stackName --role-arn=$npm_package_config_roleArn --region=$npm_package_config_region --role-arn=$npm_package_config_roleArn --cloud-type=$npm_package_config_cloudType --cloud=$npm_package_config_cloud --api-lambda-path=$npm_package_config_apigatewayLambdaPath --swagger-path=$npm_package_config_swaggerPath",
+    "go-live": "cross-env-shell deploy-serverless --promote --region=$npm_package_config_region  --stack-name=$npm_package_config_stackName --service-name=$npm_package_config_serviceName --role-arn=$npm_package_config_roleArn --cloud-type=$npm_package_config_cloudType --cloud=$npm_package_config_cloud",
+    "setup-npm": "cd setup-npm && npm run setup-npm",
+    "rollback": "cross-env-shell deploy-serverless --rollback --region --region $npm_package_config_region  --stack-name $npm_package_config_stackName --service-name $npm_package_config_serviceName --role-arn=$npm_package_config_roleArn --cloud-type=$npm_package_config_cloud --version $npm_package_config_version",
+    "deploy-eu": "npm run deploy-stack-eu && npm run deploy-code-eu",
+    "deploy-stack-eu": "cross-env-shell deploy-serverless --stack --region=$npm_package_config_euregion --stack-name=$npm_package_config_stackName --service-name=$npm_package_config_serviceName --auth-lambda-arn=$npm_package_config_euadminTokenArn --role-arn=$npm_package_config_euroleArn --cloud-type=$npm_package_config_cloudType --cloud=$npm_package_config_eucloud --api-lambda-path=$npm_package_config_apigatewayLambdaPath ",
+    "postdeploy-stack-eu": "cross-env-shell deploy-serverless --dnsupdate --region=$npm_package_config_euregion  --stack-name=$npm_package_config_stackName --service-name=$npm_package_config_serviceName --role-arn=$npm_package_config_euroleArn --cloud-type=$npm_package_config_cloudType --cloud=$npm_package_config_eucloud",
+    "predeploy-code-eu": "npm version patch && npm run repackage",
+    "deploy-code-eu": "cross-env-shell deploy-serverless --code --stack-name=$npm_package_config_stackName --role-arn=$npm_package_config_euroleArn --region=$npm_package_config_euregion --role-arn=$npm_package_config_euroleArn --cloud-type=$npm_package_config_cloudType --cloud=$npm_package_config_eucloud --api-lambda-path=$npm_package_config_apigatewayLambdaPath --swagger-path=$npm_package_config_swaggerPath",
+    "go-live-eu": "cross-env-shell deploy-serverless --promote --region=$npm_package_config_euregion  --stack-name=$npm_package_config_stackName --service-name=$npm_package_config_serviceName --role-arn=$npm_package_config_euroleArn --cloud-type=$npm_package_config_cloudType --cloud=$npm_package_config_eucloud"
+  }
+}

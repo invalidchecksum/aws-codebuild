@@ -1,0 +1,31 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - apt-get update
+      - npm install npm@latest -g
+      - echo Running NPM setup
+      - cd deployment/setup-npm
+      - npm ci
+      - npm run setup-npm -- --role-arn $paramRoleArn --region $AWS_REGION
+      - cd ../..
+  pre_build:
+    commands:
+      - echo Installing packages for deployment
+      - cd deployment
+      - npm ci
+      - npm i @mitel-internal/cloudlink-deployment@latest
+      - cd ..
+  build:
+    commands:
+      - echo rollback started on `date`
+      - cd deployment
+      - npm config set platform-api-billing:region $targetRegion
+      - npm config set platform-api-billing:cloud $cloud
+      - npm config set platform-api-billing:cloudType $cloudType
+      - npm config set platform-api-billing:roleArn $deployRoleArn
+      - npm config set platform-api-billing:version $target-version
+      - npm run rollback
+      - cd ..
+      - echo rollback completed on `date`

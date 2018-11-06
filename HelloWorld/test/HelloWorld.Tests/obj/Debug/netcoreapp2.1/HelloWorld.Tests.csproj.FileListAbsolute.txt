@@ -1,0 +1,17 @@
+C:\git\aws-codebuild\HelloWorld\test\HelloWorld.Tests\bin\Debug\netcoreapp2.1\xunit.runner.visualstudio.dotnetcore.testadapter.dll
+C:\git\aws-codebuild\HelloWorld\test\HelloWorld.Tests\bin\Debug\netcoreapp2.1\xunit.runner.reporters.netcoreapp10.dll
+C:\git\aws-codebuild\HelloWorld\test\HelloWorld.Tests\bin\Debug\netcoreapp2.1\xunit.runner.utility.netcoreapp10.dll
+C:\git\aws-codebuild\HelloWorld\test\HelloWorld.Tests\bin\Debug\netcoreapp2.1\HelloWorld.Tests.deps.json
+C:\git\aws-codebuild\HelloWorld\test\HelloWorld.Tests\bin\Debug\netcoreapp2.1\HelloWorld.Tests.runtimeconfig.json
+C:\git\aws-codebuild\HelloWorld\test\HelloWorld.Tests\bin\Debug\netcoreapp2.1\HelloWorld.Tests.runtimeconfig.dev.json
+C:\git\aws-codebuild\HelloWorld\test\HelloWorld.Tests\bin\Debug\netcoreapp2.1\HelloWorld.Tests.dll
+C:\git\aws-codebuild\HelloWorld\test\HelloWorld.Tests\bin\Debug\netcoreapp2.1\HelloWorld.Tests.pdb
+C:\git\aws-codebuild\HelloWorld\test\HelloWorld.Tests\bin\Debug\netcoreapp2.1\HelloWorld.dll
+C:\git\aws-codebuild\HelloWorld\test\HelloWorld.Tests\bin\Debug\netcoreapp2.1\HelloWorld.pdb
+C:\git\aws-codebuild\HelloWorld\test\HelloWorld.Tests\obj\Debug\netcoreapp2.1\HelloWorld.Tests.csprojAssemblyReference.cache
+C:\git\aws-codebuild\HelloWorld\test\HelloWorld.Tests\obj\Debug\netcoreapp2.1\HelloWorld.Tests.csproj.CoreCompileInputs.cache
+C:\git\aws-codebuild\HelloWorld\test\HelloWorld.Tests\obj\Debug\netcoreapp2.1\HelloWorld.Tests.AssemblyInfoInputs.cache
+C:\git\aws-codebuild\HelloWorld\test\HelloWorld.Tests\obj\Debug\netcoreapp2.1\HelloWorld.Tests.AssemblyInfo.cs
+C:\git\aws-codebuild\HelloWorld\test\HelloWorld.Tests\obj\Debug\netcoreapp2.1\HelloWorld.Tests.csproj.CopyComplete
+C:\git\aws-codebuild\HelloWorld\test\HelloWorld.Tests\obj\Debug\netcoreapp2.1\HelloWorld.Tests.dll
+C:\git\aws-codebuild\HelloWorld\test\HelloWorld.Tests\obj\Debug\netcoreapp2.1\HelloWorld.Tests.pdb

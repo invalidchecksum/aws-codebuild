@@ -1,0 +1,38 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - apt-get update
+      - apt-get install p7zip-full
+      - npm install npm@latest -g
+      - echo Running NPM setup
+      - cd deployment/setup-npm
+      - npm ci
+      - npm run setup-npm -- --role-arn $paramRoleArn --region $AWS_REGION
+      - cd ../..
+  pre_build:
+    commands:
+      - echo Installing packages for Billing
+      - cd api-gateway
+      - npm ci
+      - cd ..
+      - echo Installing packages for deployment
+      - cd deployment
+      - npm ci
+      - cd ..
+  build:
+    commands:
+      - echo Build and Deployment started on `date`
+      - cd deployment
+      - npm config set platform-api-billing:region $targetRegion
+      - npm config set platform-api-billing:cloud $cloud
+      - npm config set platform-api-billing:cloudType $cloudType
+      - npm config set platform-api-billing:roleArn $deployRoleArn
+      - npm run deploy
+      - cd ..
+      - echo Build and Deployment completed on `date`
+artifacts:
+  files:
+    - api-gateway/build/**/*
+    - deployment/build/**/*

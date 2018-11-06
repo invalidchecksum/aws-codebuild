@@ -1,0 +1,1044 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Core stack. Used to deploy all AWS resources to account / region",
+  "Parameters": {
+    "DeploymentCloudType": {
+      "Description": "Defines the cloud deployment type. i.e. 'dev', 'trials', 'gov-ca' or 'public",
+      "Type": "String",
+      "Default": "dev"
+    },
+    "DeploymentCloud": {
+      "Description": "Defines the cloud deployment either US or EU",
+      "Type": "String",
+      "Default": "us"
+    },
+    "ServiceName": {
+      "Description": "Defines the service name for this distribution. Used for naming conventions",
+      "Type": "String"
+    },
+    "AuthLambdaArn": {
+      "Description": "The arn used for authenticaiton purposes across accounts",
+      "Type": "String"
+    }
+  },
+  "Conditions": {
+    "IsPublicCloud": {
+      "Fn::Equals": [
+        {
+          "Ref": "DeploymentCloudType"
+        },
+        "public"
+      ]
+    }
+  },
+  "Mappings": {
+    "WebHookKeys": {
+      "us": {
+        "dev": "fa847565-3e23-4a0d-ab5b-c0b55c18f5a1",
+        "public": "fbb62092-04fc-4dc2-afaf-6e0724e27c02"
+      },
+      "eu": {
+        "dev": "764e3319-7b50-42c5-a6e2-6e435ebc70a3",
+        "public": "17ee8c49-f15a-490f-bdfc-1d36afe3dfb6"
+      }
+    }
+  },
+  "Outputs": {
+    "DeploymentCloudType": {
+      "Description": "The name of the deployment chosen. Used to determine DNS",
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}:DeploymentCloudType"
+        }
+      },
+      "Value": {
+        "Ref": "DeploymentCloudType"
+      }
+    },
+    "DeploymentCloud": {
+      "Description": "The name of the deployment chosen",
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}:DeploymentCloud"
+        }
+      },
+      "Value": {
+        "Ref": "DeploymentCloud"
+      }
+    },
+    "DeploymentRegion": {
+      "Description": "The target region for this deployment",
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}:DeploymentRegion"
+        }
+      },
+      "Value": {
+        "Ref": "AWS::Region"
+      }
+    },
+    "ServiceName": {
+      "Description": "The name of the service",
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}:ServiceName"
+        }
+      },
+      "Value": {
+        "Ref": "ServiceName"
+      }
+    },
+    "DeploymentBucketName": {
+      "Description": "The name of the S3 Bucket created by this stack used for deployment",
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}:DeploymentBucketName"
+        }
+      },
+      "Value": {
+        "Ref": "S3DeploymentBucket"
+      }
+    },
+    "RootUrl": {
+      "Description": "Root URL of the API gateway",
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}:RootUrl"
+        }
+      },
+      "Value": {
+        "Fn::Sub": "https://${RestApi}.execute-api.${AWS::Region}.amazonaws.com"
+      }
+    },
+    "RestApiId": {
+      "Description": "The RestApiId for this api gateway deployment",
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}:RestApiId"
+        }
+      },
+      "Value": {
+        "Ref": "RestApi"
+      }
+    },
+    "RestApiLambdaName": {
+      "Description": "The name of the primary lambda function",
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}:RestApiLambdaName"
+        }
+      },
+      "Value": {
+        "Ref": "PrimaryLambda"
+      }
+    },
+    "RestApiLambdaInvokeUri": {
+      "Description": "The uri of the lambda to invoke for the rest api",
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}:RestApiLambdaInvokeUri"
+        }
+      },
+      "Value": {
+        "Fn::Join": [
+          "",
+          [
+            "arn:aws:apigateway:",
+            {
+              "Ref": "AWS::Region"
+            },
+            ":lambda:path/2015-03-31/functions/",
+            {
+              "Fn::GetAtt": [
+                "PrimaryLambda",
+                "Arn"
+              ]
+            },
+            ":${stageVariables.lambdaAlias}",
+            "/invocations"
+          ]
+        ]
+      }
+    },
+    "RestApiAuthorizerLambdaInvokeUri": {
+      "Description": "The uri of the lambda to invoke for the custom authorizer",
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}:RestApiAuthorizerLambdaInvokeUri"
+        }
+      },
+      "Value": {
+        "Fn::Join": [
+          "",
+          [
+            "arn:aws:apigateway:",
+            {
+              "Ref": "AWS::Region"
+            },
+            ":lambda:path/2015-03-31/functions/",
+            {
+              "Fn::GetAtt": [
+                "AuthProxyLambda",
+                "Arn"
+              ]
+            },
+            "/invocations"
+          ]
+        ]
+      }
+    },
+    "OtherLambdaNames": {
+      "Description": "Comma separated list of additional lambda function names",
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}:OtherLambdaNames"
+        }
+      },
+      "Value": "none"
+    },
+    "RestApiLiveCloudFrontDistribution": {
+      "Description": "The api-gateway live cloudfront distribution for this api",
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}:RestApiLiveCloudFrontDistribution"
+        }
+      },
+      "Value": {
+        "Fn::GetAtt": [
+          "ApiGatewayDomainInfo",
+          "RegionalDomainName"
+        ]
+      }
+    },
+    "RestApiStageCloudFrontDistribution": {
+      "Description": "The api-gateway staging cloudfront distribution for this api",
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}:RestApiStageCloudFrontDistribution"
+        }
+      },
+      "Value": {
+        "Fn::GetAtt": [
+          "ApiGatewayStageDomainInfo",
+          "RegionalDomainName"
+        ]
+      }
+    },
+    "ApiRegionalZoneId": {
+      "Description": "The regional API zone ID for this deployment",
+      "Export": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}:ApiRegionalZoneId"
+        }
+      },
+      "Value": {
+        "Fn::GetAtt": [
+          "ApiGatewayDomainInfo",
+          "RegionalZoneId"
+        ]
+      }
+    }
+  },
+  "Resources": {
+    "WebCert": {
+      "Type": "AWS::CertificateManager::Certificate",
+      "Properties": {
+        "DomainName": {
+          "Fn::If": [
+            "IsPublicCloud",
+            {
+              "Fn::Sub": "*.${AWS::Region}.${DeploymentCloud}.api.mitel.io"
+            },
+            {
+              "Fn::Sub": "*.${AWS::Region}.${DeploymentCloud}.${DeploymentCloudType}.api.mitel.io"
+            }
+          ]
+        },
+        "DomainValidationOptions": [
+          {
+            "DomainName": {
+              "Fn::If": [
+                "IsPublicCloud",
+                {
+                  "Fn::Sub": "*.${AWS::Region}.${DeploymentCloud}.api.mitel.io"
+                },
+                {
+                  "Fn::Sub": "*.${AWS::Region}.${DeploymentCloud}.${DeploymentCloudType}.api.mitel.io"
+                }
+              ]
+            },
+            "ValidationDomain": "mitel.io"
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "GeneralWebCert"
+          }
+        ]
+      }
+    },
+    "ApiGwResourceRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "platform-api-apigw-getdomain",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "lambda.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "Path": "/",
+        "Policies": [
+          {
+            "PolicyName": "root",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "apigateway:GET*"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents",
+                    "logs:PutMetricFilter",
+                    "logs:PutRetentionPolicy"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*:log-stream:*"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "ApiGwResourceLambda": {
+      "Type": "AWS::Lambda::Function",
+      "DependsOn": "ApiGwResourceRole",
+      "Properties": {
+        "FunctionName": "platform-api-get-apigateway-domainname",
+        "Code": {
+          "S3Bucket": {
+            "Fn::Sub": "mitel-devops-deploymenttools-${AWS::Region}"
+          },
+          "S3Key": "get-regional-apigw-domain.zip"
+        },
+        "Handler": "index.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "ApiGwResourceRole",
+            "Arn"
+          ]
+        },
+        "Timeout": 30,
+        "Runtime": "nodejs8.10"
+      }
+    },
+    "ApiGatewayDomainInfo": {
+      "Type": "Custom::ApiGatewayDomainInfo",
+      "DependsOn": [
+        "ApiGwResourceLambda",
+        "ApiLiveDomain"
+      ],
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "ApiGwResourceLambda",
+            "Arn"
+          ]
+        },
+        "Region": {
+          "Ref": "AWS::Region"
+        },
+        "CustomDomainName": {
+          "Fn::If": [
+            "IsPublicCloud",
+            {
+              "Fn::Sub": "${ServiceName}.${AWS::Region}.${DeploymentCloud}.api.mitel.io"
+            },
+            {
+              "Fn::Sub": "${ServiceName}.${AWS::Region}.${DeploymentCloud}.${DeploymentCloudType}.api.mitel.io"
+            }
+          ]
+        }
+      }
+    },
+    "ApiGatewayStageDomainInfo": {
+      "Type": "Custom::ApiGatewayDomainInfo",
+      "DependsOn": [
+        "ApiGwResourceLambda",
+        "ApiStagingDomain"
+      ],
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "ApiGwResourceLambda",
+            "Arn"
+          ]
+        },
+        "Region": {
+          "Ref": "AWS::Region"
+        },
+        "CustomDomainName": {
+          "Fn::If": [
+            "IsPublicCloud",
+            {
+              "Fn::Sub": "${ServiceName}-stage.${AWS::Region}.${DeploymentCloud}.api.mitel.io"
+            },
+            {
+              "Fn::Sub": "${ServiceName}-stage.${AWS::Region}.${DeploymentCloud}.${DeploymentCloudType}.api.mitel.io"
+            }
+          ]
+        }
+      }
+    },
+    "AuthProxyLambdaExecutionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "platform-api-auth-proxy",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "lambda.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "Path": "/",
+        "Policies": [
+          {
+            "PolicyName": "root",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "lambda:InvokeFunction"
+                  ],
+                  "Resource": {
+                    "Ref": "AuthLambdaArn"
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents",
+                    "logs:PutMetricFilter",
+                    "logs:PutRetentionPolicy"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*:log-stream:*"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "AuthProxyLambda": {
+      "Type": "AWS::Lambda::Function",
+      "DependsOn": "AuthProxyLambdaExecutionRole",
+      "Properties": {
+        "FunctionName": "platform-api-auth-proxy",
+        "Description": "Lambda auth proxy function used for auth and token management",
+        "Code": {
+          "S3Bucket": {
+            "Fn::Sub": "mitel-devops-deploymenttools-${AWS::Region}"
+          },
+          "S3Key": "auth-proxy.zip"
+        },
+        "Handler": "index.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "AuthProxyLambdaExecutionRole",
+            "Arn"
+          ]
+        },
+        "Runtime": "nodejs6.10",
+        "Timeout": 30,
+        "MemorySize": 512,
+        "Environment": {
+          "Variables": {
+            "AUTH_LAMBDA_ARN": {
+              "Ref": "AuthLambdaArn"
+            },
+            "AUTH_LAMBDA_STAGE": "live"
+          }
+        }
+      }
+    },
+    "PrimaryLambdaExecutionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "platform-api-billing-apigateway-lambda",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "lambda.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "Path": "/",
+        "Policies": [
+          {
+            "PolicyName": "root",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents",
+                    "logs:PutMetricFilter",
+                    "logs:PutRetentionPolicy"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*:log-stream:*"
+                    }
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "dynamodb:DescribeTable",
+                    "dynamodb:GetItem",
+                    "dynamodb:BatchGetItem",
+                    "dynamodb:Query",
+                    "dynamodb:PutItem",
+                    "dynamodb:UpdateItem",
+                    "dynamodb:DeleteItem",
+                    "dynamodb:Scan"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::GetAtt": [
+                        "ConversationsDynamoTable",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "GatewayConfigDynamoTable",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "GoogleDomainVerifyDynamoTable",
+                        "Arn"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "lambda:InvokeFunction"
+                  ],
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "AuthProxyLambda",
+                      "Arn"
+                    ]
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "cloudwatch:GetMetricStatistics"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "S3DeploymentBucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketName": {
+          "Fn::Sub": "platform-api-${ServiceName}-deployment-${AWS::Region}-${AWS::AccountId}"
+        }
+      }
+    },
+    "PrimaryLambda": {
+      "Type": "AWS::Lambda::Function",
+      "DependsOn": "PrimaryLambdaExecutionRole",
+      "Properties": {
+        "Code": {
+          "ZipFile": {
+            "Fn::Join": [
+              "\n",
+              [
+                "exports.handler = function(event, context) {",
+                "  console.log('hello world!');",
+                "};"
+              ]
+            ]
+          }
+        },
+        "Environment": {
+          "Variables": {
+            "awsRegion": {
+              "Ref": "AWS::Region"
+            },
+            "cloud": {
+              "Ref": "DeploymentCloudType"
+            },
+            "authLambdaArn": {
+              "Ref": "AuthProxyLambda"
+            },
+            "LAMBDA": 1,
+            "notifyHost": {
+              "Fn::If": [
+                "IsPublicCloud",
+                {
+                  "Fn::Sub": "notifications.${DeploymentCloud}.api.mitel.io"
+                },
+                {
+                  "Fn::Sub": "notifications.${DeploymentCloud}.${DeploymentCloudType}.api.mitel.io"
+                }
+              ]
+            },
+            "notifyWebhookKey": {
+              "Fn::FindInMap": [
+                "WebHookKeys",
+                {
+                  "Ref": "DeploymentCloud"
+                },
+                {
+                  "Ref": "DeploymentCloudType"
+                }
+              ]
+            }
+          }
+        },
+        "FunctionName": "platform-api-billing",
+        "Handler": "index.handler",
+        "MemorySize": 1024,
+        "Description": "lambda function",
+        "Role": {
+          "Fn::GetAtt": [
+            "PrimaryLambdaExecutionRole",
+            "Arn"
+          ]
+        },
+        "Runtime": "nodejs8.10",
+        "Timeout": 300
+      }
+    },
+    "LambdaBlueAlias": {
+      "Type": "AWS::Lambda::Alias",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "PrimaryLambda"
+        },
+        "FunctionVersion": "$LATEST",
+        "Name": "blue"
+      }
+    },
+    "LambdaGreenAlias": {
+      "Type": "AWS::Lambda::Alias",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "PrimaryLambda"
+        },
+        "FunctionVersion": "$LATEST",
+        "Name": "green"
+      }
+    },
+    "RestApi": {
+      "Type": "AWS::ApiGateway::RestApi",
+      "Properties": {
+        "Name": {
+          "Fn::If": [
+            "IsPublicCloud",
+            {
+              "Fn::Sub": "${ServiceName}.api.mitel.io"
+            },
+            {
+              "Fn::Sub": "${ServiceName}.${DeploymentCloudType}.api.mitel.io"
+            }
+          ]
+        },
+        "Description": "REST API",
+        "FailOnWarnings": false
+      }
+    },
+    "ApiLambdaPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:invokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "PrimaryLambda",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Sub": "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*"
+        }
+      }
+    },
+    "LambdaGreenPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:invokeFunction",
+        "FunctionName": {
+          "Ref": "LambdaGreenAlias"
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Sub": "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*"
+        }
+      }
+    },
+    "LambdaBluePermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:invokeFunction",
+        "FunctionName": {
+          "Ref": "LambdaBlueAlias"
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Sub": "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*"
+        }
+      }
+    },
+    "LambdaAuthProxyPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:invokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "AuthProxyLambda",
+            "Arn"
+          ]
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Sub": "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/authorizers/*"
+        }
+      }
+    },
+    "ApiGatewayCloudWatchLogsRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "apigateway.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "ApiGatewayLogsPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:DescribeLogGroups",
+                    "logs:DescribeLogStreams",
+                    "logs:PutLogEvents",
+                    "logs:GetLogEvents",
+                    "logs:FilterLogEvents"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "ApiGatewayAccount": {
+      "Type": "AWS::ApiGateway::Account",
+      "Properties": {
+        "CloudWatchRoleArn": {
+          "Fn::GetAtt": [
+            "ApiGatewayCloudWatchLogsRole",
+            "Arn"
+          ]
+        }
+      }
+    },
+    "ApiBlueStage": {
+      "DependsOn": [
+        "ApiGatewayAccount"
+      ],
+      "Type": "AWS::ApiGateway::Stage",
+      "Properties": {
+        "DeploymentId": {
+          "Ref": "ApiDeployment"
+        },
+        "MethodSettings": [
+          {
+            "DataTraceEnabled": true,
+            "HttpMethod": "*",
+            "LoggingLevel": "INFO",
+            "ResourcePath": "/*"
+          }
+        ],
+        "RestApiId": {
+          "Ref": "RestApi"
+        },
+        "StageName": "blue",
+        "Variables": {
+          "lambdaAlias": "blue"
+        }
+      }
+    },
+    "ApiGreenStage": {
+      "DependsOn": [
+        "ApiGatewayAccount"
+      ],
+      "Type": "AWS::ApiGateway::Stage",
+      "Properties": {
+        "DeploymentId": {
+          "Ref": "ApiDeployment"
+        },
+        "MethodSettings": [
+          {
+            "DataTraceEnabled": true,
+            "HttpMethod": "*",
+            "LoggingLevel": "INFO",
+            "ResourcePath": "/*"
+          }
+        ],
+        "RestApiId": {
+          "Ref": "RestApi"
+        },
+        "StageName": "green",
+        "Variables": {
+          "lambdaAlias": "green"
+        }
+      }
+    },
+    "ApiDeployment": {
+      "Type": "AWS::ApiGateway::Deployment",
+      "DependsOn": [
+        "BaseRestRequestMethod"
+      ],
+      "Properties": {
+        "RestApiId": {
+          "Ref": "RestApi"
+        },
+        "StageName": "DummyStage"
+      }
+    },
+    "BaseRestResource": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+          "RestApiId": {
+              "Ref": "RestApi"
+          },
+          "ParentId": {
+          "Fn::GetAtt": [
+            "RestApi",
+            "RootResourceId"
+          ]
+          },
+          "PathPart": "2018-05-27"
+      }
+    },
+    "BaseRestRequestMethod": {
+      "DependsOn": "ApiLambdaPermission",
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+          "AuthorizationType": "NONE",
+          "HttpMethod": "GET",
+          "Integration": {
+              "Type": "AWS",
+              "IntegrationHttpMethod": "POST",
+              "Uri": {
+                  "Fn::Join": [
+                      "",
+                      [
+                          "arn:aws:apigateway:",
+                          {
+                              "Ref": "AWS::Region"
+                          },
+                          ":lambda:path/2015-03-31/functions/",
+                          {
+                              "Fn::GetAtt": [
+                                  "PrimaryLambda",
+                                  "Arn"
+                              ]
+                          },
+                          ":${stageVariables.lambdaAlias}",
+                          "/invocations"
+                      ]
+                  ]
+              },
+              "IntegrationResponses": [
+                  {
+                      "StatusCode": 200
+                  }
+              ],
+              "RequestTemplates": {
+                  "application/json": {
+                      "Fn::Sub": "{\"name\": \"$input.params('name')\"}"
+                  }
+              }
+          },
+          "RequestParameters": {
+              "method.request.querystring.name": false
+          },
+          "ResourceId": {
+              "Ref": "BaseRestResource"
+          },
+          "RestApiId": {
+              "Ref": "RestApi"
+          },
+          "MethodResponses": [
+              {
+                  "StatusCode": 200
+              }
+          ]
+      }
+    },
+    "ApiLiveDomain": {
+      "Type": "AWS::ApiGateway::DomainName",
+      "DependsOn": "WebCert",
+      "Properties": {
+        "DomainName": {
+          "Fn::If": [
+            "IsPublicCloud",
+            {
+              "Fn::Sub": "${ServiceName}.${AWS::Region}.${DeploymentCloud}.api.mitel.io"
+            },
+            {
+              "Fn::Sub": "${ServiceName}.${AWS::Region}.${DeploymentCloud}.${DeploymentCloudType}.api.mitel.io"
+            }
+          ]
+        },
+        "RegionalCertificateArn": {
+          "Ref": "WebCert"
+        },
+        "EndpointConfiguration": {
+          "Types": [
+            "REGIONAL"
+          ]
+        }
+      }
+    },
+    "LiveDomainBasePath": {
+      "Type": "AWS::ApiGateway::BasePathMapping",
+      "Properties": {
+        "DomainName": {
+          "Ref": "ApiLiveDomain"
+        },
+        "RestApiId": {
+          "Ref": "RestApi"
+        },
+        "Stage": {
+          "Ref": "ApiGreenStage"
+        }
+      }
+    },
+    "ApiStagingDomain": {
+      "Type": "AWS::ApiGateway::DomainName",
+      "DependsOn": "WebCert",
+      "Properties": {
+        "DomainName": {
+          "Fn::If": [
+            "IsPublicCloud",
+            {
+              "Fn::Sub": "${ServiceName}-stage.${AWS::Region}.${DeploymentCloud}.api.mitel.io"
+            },
+            {
+              "Fn::Sub": "${ServiceName}-stage.${AWS::Region}.${DeploymentCloud}.${DeploymentCloudType}.api.mitel.io"
+            }
+          ]
+        },
+        "RegionalCertificateArn": {
+          "Ref": "WebCert"
+        },
+        "EndpointConfiguration": {
+          "Types": [
+            "REGIONAL"
+          ]
+        }
+      }
+    },
+    "StagingDomainBasePath": {
+      "Type": "AWS::ApiGateway::BasePathMapping",
+      "Properties": {
+        "DomainName": {
+          "Ref": "ApiStagingDomain"
+        },
+        "RestApiId": {
+          "Ref": "RestApi"
+        },
+        "Stage": {
+          "Ref": "ApiBlueStage"
+        }
+      }
+    }
+  }
+}
